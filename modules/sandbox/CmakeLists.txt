@@ -1,0 +1,45 @@
+cmake_minimum_required(VERSION 3.12)
+
+project(Sandbox)
+
+# Find includes in corresponding build directories
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+# Instruct CMake to run moc automatically when needed
+set(CMAKE_AUTOMOC ON)
+
+find_package(OpenCV 4.0.1 REQUIRED)
+
+find_package(Qt5 COMPONENTS Widgets REQUIRED)
+
+set(SOURCE_FILES
+	src/main.cpp
+	)
+
+set(PCH
+	src/pch.h
+	src/pch.cpp
+	)
+
+add_executable(${PROJECT_NAME}
+	${PCH}
+	${SOURCE_FILES}
+	)
+
+qt5_use_modules(${PROJECT_NAME}
+	Core
+	Gui
+	Widgets
+	)
+
+target_include_directories(${PROJECT_NAME}
+	PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+		${CMAKE_CURRENT_SOURCE_DIR}/src
+		${CMAKE_CURRENT_BINARY_DIR}
+		${OpenCV_INCLUDE_DIRS}
+	)
+
+target_link_libraries(${PROJECT_NAME}
+	${OpenCV_LIBS}
+	RecognitionLib
+	)
