@@ -16,6 +16,7 @@ set(PCH
 	)
 
 set(INCLUDE_FILES
+	include/recognitionLib/RecognitionLib.h
 	include/recognitionLib/SelectiveSearch.h
 	include/recognitionLib/Goturn.h
 	include/recognitionLib/Rcnn.h
