@@ -153,11 +153,5 @@ private:
 	Settings settings_;
 };
 
-//!
-int RunYolo3(
-	const ProcessingType processingType,
-	const std::string& fileToProcess,
-	const std::string& outputPath);
-
 } // namespace yolo
 } // namespace rclib
