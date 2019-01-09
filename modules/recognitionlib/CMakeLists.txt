@@ -16,18 +16,19 @@ set(PCH
 	)
 
 set(INCLUDE_FILES
+	include/recognitionLib/Goturn.h
+	include/recognitionLib/NeroAlgorithm.h
+	include/recognitionLib/Rcnn.h
 	include/recognitionLib/RecognitionLib.h
 	include/recognitionLib/SelectiveSearch.h
-	include/recognitionLib/Goturn.h
-	include/recognitionLib/Rcnn.h
 	include/recognitionLib/Types.h
 	include/recognitionLib/Yolo3.h
 	)
 
 set(SOURCE_FILES
-	src/SelectiveSearch.cpp
 	src/Goturn.cpp
 	src/Rcnn.cpp
+	src/SelectiveSearch.cpp
 	src/Yolo3.cpp
 	)
 

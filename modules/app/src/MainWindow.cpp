@@ -30,12 +30,44 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-	if (yolo3_.IsRunning()) {
-		yolo3_.Stop();
+	try
+	{
+		StopAlgorith();
 	}
-	if (workingThread_ && workingThread_->joinable()) {
-		workingThread_->join();
+	catch (const std::exception& e)
+	{
+		std::cerr << "Error occurred while closing main window: "
+			<< e.what();
 	}
+}
+
+void MainWindow::OnStartButtonPressed()
+{
+	if (workingThread_)
+	{
+		StopAlgorith();
+
+		workingThread_.reset();
+
+		startBtn_->setText("Start");
+
+		return;
+	}
+
+	workingThread_ = std::make_shared<std::thread>([this]() {
+
+		const std::string yoloFilesRoot = ASSETS_DIR;
+		const auto inputData = yoloFilesRoot + "/video/run.mp4";
+
+		yolo3_.InitDefaultConfiguration();
+		yolo3_.SetFrameProcessedCallback([this](auto frame) {
+			emit UpdateVideoFrame(frame);
+		});
+		yolo3_.SetClassesToDisplay({ "cell phone" });
+		yolo3_.Process(rclib::yolo::YOLO3::DataType::CaptureFromVideoCam, inputData);
+	});
+
+	startBtn_->setText("Stop");
 }
 
 void MainWindow::OnUpdateVideoFrame(std::shared_ptr<cv::Mat> frame)
@@ -55,36 +87,13 @@ void MainWindow::OnUpdateVideoFrame(std::shared_ptr<cv::Mat> frame)
 	qApp->processEvents();
 }
 
-void MainWindow::OnStartButtonPressed()
+void MainWindow::StopAlgorith()
 {
-	if (workingThread_)
-	{
-		if (yolo3_.IsRunning()) {
-			yolo3_.Stop();
-		}
-		if (workingThread_->joinable()) {
-			workingThread_->join();
-		}
-		workingThread_.reset();
-
-		startBtn_->setText("Start");
-
-		return;
+	if (yolo3_.IsRunning()) {
+		yolo3_.Stop();
 	}
-	workingThread_ = std::make_shared<std::thread>([this]() {
-		const std::string yoloFilesRoot = ASSETS_DIR;
-		rclib::yolo::YOLO3::ConfigFiles cfg;
-		cfg.classesNamesFile_ = yoloFilesRoot + "/yolo/coco.names";
-		cfg.modelWeights_ = yoloFilesRoot + "/yolo/yolov3.weights";
-		cfg.moduleCfgFile_ = yoloFilesRoot + "/yolo/yolov3.cfg";
-		const auto inputData = yoloFilesRoot + "/video/run.mp4";
-		yolo3_.SetConfigs(cfg);
-		yolo3_.SetFrameProcessedCallback([this](auto frame) {
-			emit UpdateVideoFrame(frame);
-		});
-		yolo3_.SetClassesToDisplay({ "cell phone" });
-		yolo3_.Process(rclib::yolo::YOLO3::DataType::CaptureFromVideoCam, inputData);
-	});
-
-	startBtn_->setText("Stop");
+	if (workingThread_->joinable()) {
+		workingThread_->join();
+	}
 }
+

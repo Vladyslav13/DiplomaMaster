@@ -4,6 +4,7 @@
 // STL includes and definitions.
 //
 
+#include <atomic>
 #include <fstream>
 #include <sstream>
 #include <iostream>

@@ -7,7 +7,7 @@
 */
 
 #include <recognitionLib/Types.h>
-#include <atomic>
+#include <recognitionLib/NeroAlgorithm.h>
 
 namespace rclib
 {
@@ -15,6 +15,7 @@ namespace yolo
 {
 
 class YOLO3
+	: public NeroAlgorithm
 {
 	//
 	// Public types.
@@ -29,13 +30,6 @@ public:
 		std::string modelWeights_;
 		//! Path to module config file.
 		std::string moduleCfgFile_;
-	};
-	//! Type of data that algorithm will be working with.
-	enum class DataType
-	{
-		Unknown = 0,
-		VideoProcessing,
-		CaptureFromVideoCam // Currently unsupported
 	};
 	//! YOLO algorithm settings.
 	struct Settings
@@ -77,10 +71,13 @@ public:
 	// Public interface.
 	//
 public:
+	//! Configure algorithm with default parameters.
+	void InitDefaultConfiguration() override;
 	//! Starts algorithm with given parameters. Return error message if its occurred.
 	std::string Process(
 		const DataType processingDataType,
-		const std::string& fileToProcess);
+		const std::string& fileToProcess,
+		const int deviceInd = 0) override;
 
 	//
 	// TODO: Temporary moved into private section because of troubles with asynchronous calls.

@@ -11,7 +11,6 @@ YOLO3::YOLO3()
 	, isRunning_(false)
 	, netConfigured_(false)
 {
-	
 }
 
 YOLO3::YOLO3(const ConfigFiles& configFiles, const Settings& settings)
@@ -81,6 +80,20 @@ void YOLO3::DrawPred(
 		0.75,
 		cv::Scalar(0, 0, 0),
 		1);
+}
+
+void YOLO3::InitDefaultConfiguration()
+{
+	const std::string yoloFilesRoot = ASSETS_DIR;
+
+	rclib::yolo::YOLO3::ConfigFiles cfg;
+	cfg.classesNamesFile_ = yoloFilesRoot + "/yolo/coco.names";
+	cfg.modelWeights_ = yoloFilesRoot + "/yolo/yolov3.weights";
+	cfg.moduleCfgFile_ = yoloFilesRoot + "/yolo/yolov3.cfg";
+
+	SetConfigs(cfg);
+
+	PrepareNet();
 }
 
 std::vector<std::string> YOLO3::GetOutputsNames(const cv::dnn::Net& net)
@@ -183,7 +196,8 @@ void YOLO3::PrepareNet()
 
 std::string YOLO3::Process(
 	const DataType processingDataType,
-	const std::string& fileToProcess)
+	const std::string& fileToProcess,
+	const int deviceInd /*= 0*/)
 {
 	// TODO: It can be false but processing loop will be in the last iteration.
 	if (isRunning_) {
@@ -199,7 +213,7 @@ std::string YOLO3::Process(
 		switch (processingDataType)
 		{
 		case DataType::CaptureFromVideoCam:
-			ProcessStream(0, fileToProcess); // TODO: add possibility to chose cam.
+			ProcessStream(deviceInd, fileToProcess); // TODO: add possibility to chose cam.
 			break;
 		case DataType::VideoProcessing:
 			ProcessVideo(fileToProcess);
