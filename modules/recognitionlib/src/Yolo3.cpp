@@ -35,14 +35,17 @@ void YOLO3::DrawPred(
 
 		const auto className = classes_[classId];
 
-		auto it = std::find_if(
-			classesToDisplay_.begin(),
-			classesToDisplay_.end(),
-			[&className](const std::string& name) {
+		if (!classesToDisplay_.empty())
+		{
+			const auto it = std::find_if(
+				classesToDisplay_.begin(),
+				classesToDisplay_.end(),
+				[&className](const std::string& name) {
 				return className == name;
 			});
-		if(it == classesToDisplay_.end()) {
-			return;
+			if (it == classesToDisplay_.end()) {
+				return;
+			}
 		}
 
 		label = className + ":" + label;
@@ -215,7 +218,7 @@ std::string YOLO3::Process(
 		case DataType::CaptureFromVideoCam:
 			ProcessStream(deviceInd, fileToProcess); // TODO: add possibility to chose cam.
 			break;
-		case DataType::VideoProcessing:
+		case DataType::VideoFile:
 			ProcessVideo(fileToProcess);
 			break;
 		case DataType::Unknown:
@@ -253,7 +256,7 @@ void YOLO3::ProcessStream(
 void YOLO3::ProcessVideo(const std::string& fileToProcess)
 {
 	PrepareNet();
-	
+
 	cv::VideoCapture cap;
 	cap.open(fileToProcess);
 

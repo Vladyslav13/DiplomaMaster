@@ -33,3 +33,6 @@
 #include <QGroupBox>
 #include <QRadioButton>
 #include <QMessageBox>
+#include <QDialog>
+#include <QTextEdit>
+#include <QFileDialog>

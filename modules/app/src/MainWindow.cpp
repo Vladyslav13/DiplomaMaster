@@ -8,7 +8,7 @@ MainWindow::MainWindow(QWidget *parent)
 	, centralWidget_(new QFrame(this))
 	, currentAlgorithm_(nullptr)
 	, graphicsView_(new QGraphicsView(centralWidget_))
-	, startBtn_(new QPushButton("start", centralWidget_))
+	, startBtn_(new QPushButton("Start", centralWidget_))
 	, workingThread_(nullptr)
 {
 	setCentralWidget(centralWidget_);
@@ -17,23 +17,63 @@ MainWindow::MainWindow(QWidget *parent)
 	graphicsView_->scene()->addItem(&pixmap_);
 	graphicsView_->setBackgroundBrush(QBrush(Qt::black));
 
-	auto groupBox = new QGroupBox(tr("Current algorithm"));
+	//
+	// Chose algo controls.
+	//
+
+	auto choseAlgoBox = new QGroupBox(tr("Current algorithm"));
 	auto yoloRatio = new QRadioButton(tr("YOLO"));
 	auto rcnnRatio = new QRadioButton(tr("RCNN"));
 	auto algoSelectLay = new QVBoxLayout;
 	algoSelectLay->addWidget(rcnnRatio);
 	algoSelectLay->addWidget(yoloRatio);
-	groupBox->setLayout(algoSelectLay);
+	choseAlgoBox->setLayout(algoSelectLay);
+
+	//
+	// Chose source controls.
+	//
+
+	auto choseSource = new QGroupBox(tr("Current algorithm"));
+	auto webCamRatio = new QRadioButton(tr("Web camera"));
+	auto fileRation = new QRadioButton(tr("Video file"));
+	auto choseSourceLay = new QVBoxLayout;
+	choseSourceLay->addWidget(webCamRatio);
+	choseSourceLay->addWidget(fileRation);
+	choseSource->setLayout(choseSourceLay);
+
+	//
+	// Buttons controls.
+	//
+	auto buttonsGroup = new QGroupBox(tr("Current algorithm"));
+	auto saveButton = new QPushButton(tr("Save"));
+	auto buttonsLay = new QVBoxLayout;
+	buttonsLay->addWidget(startBtn_, 0, Qt::AlignBottom);
+	buttonsLay->addWidget(saveButton, 0, Qt::AlignBottom);
+	buttonsGroup->setLayout(buttonsLay);
+
+	//
+	// All controls lay.
+	//
 
 	auto controlsLay = new QVBoxLayout();
-	controlsLay->addWidget(groupBox, 0, Qt::AlignTop);
-	controlsLay->addWidget(startBtn_, 0, Qt::AlignTop);
+	controlsLay->addWidget(choseAlgoBox, 0, Qt::AlignTop);
+	controlsLay->addWidget(choseSource, 0, Qt::AlignTop);
+	controlsLay->addWidget(buttonsGroup, 0, Qt::AlignBottom);
+
+	//
+	// Setting main lay.
+	//
 
 	auto mainLay = new QHBoxLayout(centralWidget_);
 	mainLay->addLayout(controlsLay);
 	mainLay->addWidget(graphicsView_);
 
+	//
+	// Connect signals handlers.
+	//
+
 	connect(startBtn_, &QPushButton::pressed, this, &MainWindow::OnStartButtonPressed);
+	connect(saveButton, &QPushButton::pressed, this, &MainWindow::OnSaveButtonPressed);
 	
 	qRegisterMetaType<std::shared_ptr<cv::Mat>>();
 	connect(
@@ -52,6 +92,22 @@ MainWindow::MainWindow(QWidget *parent)
 		UpdateCurrentAlgo(rclib::NeroAlgoTypes::MaskRcnn);
 	});
 
+	connect(
+		webCamRatio,
+		&QRadioButton::toggled,
+		this,
+		[this](bool checked) {
+		algoDataSourceType_ = rclib::NeroAlgorithm::DataType::CaptureFromVideoCam;
+	});
+
+	connect(
+		fileRation,
+		&QRadioButton::toggled,
+		this,
+		[this](bool checked) {
+		algoDataSourceType_ = rclib::NeroAlgorithm::DataType::VideoFile;
+	});
+
 	connect(this, &MainWindow::UpdateVideoFrame, this, &MainWindow::OnUpdateVideoFrame);
 
 	resize(900, 500);
@@ -68,6 +124,41 @@ MainWindow::~MainWindow()
 		std::cerr << "Error occurred while closing main window: "
 			<< e.what();
 	}
+}
+
+void MainWindow::OnSaveButtonPressed()
+{
+	if (!(currentAlgorithm_ && !currentAlgorithm_->GetProcessedData().empty()))
+	{
+		DisplayError("There is nothing to save", this);
+		return;
+	}
+
+	if (currentAlgorithm_->IsRunning())
+	{
+		DisplayError("Stop video processing before saving", this);
+		return;
+	}
+
+	auto filePath = QFileDialog::getSaveFileName(
+		this,
+		tr("Save processed video"),
+		QDir::currentPath(),
+		"*.avi");
+
+	auto val =  currentAlgorithm_->GetProcessedData();
+	cv::VideoWriter video;
+	video.open(
+		filePath.toStdString(),
+		cv::VideoWriter::fourcc('M','J','P','G'),
+		28,
+		currentAlgorithm_->GetFrameSize());
+
+	for (const auto& frame : val) {
+		video.write(*frame);
+	}
+
+	video.release();
 }
 
 void MainWindow::OnStartButtonPressed()
@@ -89,13 +180,30 @@ void MainWindow::OnStartButtonPressed()
 		return;
 	}
 
-	workingThread_ = std::make_shared<std::thread>([this]() {
+	std::string inputData;
 
-		const std::string yoloFilesRoot = ASSETS_DIR;
-		const auto inputData = yoloFilesRoot + "/video/run.mp4";
+	switch (algoDataSourceType_)
+	{
+	case rclib::NeroAlgorithm::DataType::VideoFile:
+		inputData = QFileDialog::getOpenFileName(
+			this,
+			"Select color scale file",
+			QDir::currentPath(),
+			"*.mp4").toStdString();
 
-		currentAlgorithm_->Process(
-			rclib::yolo::YOLO3::DataType::CaptureFromVideoCam, inputData);
+		if (inputData.empty()) {
+			return;
+		}
+		break;
+	case rclib::NeroAlgorithm::DataType::CaptureFromVideoCam:
+		break;
+	default:
+		DisplayError("Incorrect algo source is chosen", this);
+		return;
+	}
+
+	workingThread_ = std::make_shared<std::thread>([this, inputData]() {
+		currentAlgorithm_->Process(algoDataSourceType_, inputData);
 	});
 
 	startBtn_->setText("Stop");

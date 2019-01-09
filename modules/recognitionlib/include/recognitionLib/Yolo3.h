@@ -98,11 +98,11 @@ public:
 	//! Get configs.
 	ConfigFiles GetConfigs() const;
 	//! Returns data frame size.
-	cv::Size GetFrameSize() const;
+	cv::Size GetFrameSize() const override;
 	//! Get settings.
 	Settings GetSettings() const;
 	//! Returns processed data.
-	std::vector<FrameData> GetProcessedData() const;
+	std::vector<FrameData> GetProcessedData() const override;
 
 	//
 	// Private functions.

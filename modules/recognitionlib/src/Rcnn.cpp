@@ -249,7 +249,7 @@ std::string MaskRcnn::Process(
 		case DataType::CaptureFromVideoCam:
 			ProcessStream(deviceInd, fileToProcess); // TODO: add possibility to chose cam.
 			break;
-		case DataType::VideoProcessing:
+		case DataType::VideoFile:
 			ProcessVideo(fileToProcess);
 			break;
 		case DataType::Unknown:
@@ -338,12 +338,6 @@ void MaskRcnn::ProcessVideoImpl(cv::VideoCapture& cap)
 
 		// Extract the bounding box and mask for each of the detected objects
 		PostProcess(frame, outs);
-
-		//// Write the frame with the detection boxes
-		//cv::Mat detectedFrame;
-		//frame.convertTo(detectedFrame, CV_8U);
-		//if (currentWorkType == WorkType::Image) imwrite(outputFile, detectedFrame);
-		//else video.write(detectedFrame);
 
 		// Write the frame with the detection boxes
 		processingRes_.push_back(frame);

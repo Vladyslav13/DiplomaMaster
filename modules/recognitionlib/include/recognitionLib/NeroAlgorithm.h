@@ -22,7 +22,7 @@ public:
 	enum class DataType
 	{
 		Unknown = 0,
-		VideoProcessing,
+		VideoFile,
 		CaptureFromVideoCam
 	};
 
@@ -59,6 +59,10 @@ public:
 	virtual bool SetFrameProcessedCallback(const FrameProcessedCallback& callback) = 0;
 	//! Set is running status on false. Work will be stopped on the next iteration.
 	virtual void Stop() = 0;
+	//! Returns data frame size.
+	virtual cv::Size GetFrameSize() const = 0;
+	//! Returns processed data.
+	virtual std::vector<FrameData> GetProcessedData() const = 0;
 
 	//
 	// Protected data members.

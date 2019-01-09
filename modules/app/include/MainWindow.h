@@ -20,6 +20,8 @@ public:
 
 public slots:
 	//!
+	void OnSaveButtonPressed();
+	//!
 	void OnStartButtonPressed();
 	//!
 	void OnUpdateVideoFrame(std::shared_ptr<cv::Mat> frame);
@@ -45,4 +47,6 @@ private:
 	QPushButton* startBtn_;
 	//!
 	std::shared_ptr<std::thread> workingThread_ = nullptr;
+	//!
+	rclib::NeroAlgorithm::DataType algoDataSourceType_ = rclib::NeroAlgorithm::DataType::Unknown;
 };
