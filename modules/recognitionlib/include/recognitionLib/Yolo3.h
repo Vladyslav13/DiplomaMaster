@@ -101,6 +101,8 @@ public:
 	bool IsRunning() const;
 	//! Set configs.
 	void SetConfigs(const ConfigFiles& cfg);
+	//! Sets classes that  allowed to display.
+	void SetClassesToDisplay(const std::vector<std::string>& classes);
 	//! Sets handle function for processing frames. Returns true in success.
 	bool SetFrameProcessedCallback(const FrameProcessedCallback& callback);
 	//! Set settings.
@@ -124,7 +126,7 @@ private:
 	void DrawPred(int classId, float conf, int left, int top, int right, int bottom, FrameData& frame);
 	//! Get the names of the output layers
 	std::vector<std::string> GetOutputsNames(const cv::dnn::Net& net);
-	//! Removes the bounding boxes with low confidence using non-maxima suppression
+	//! Removes the bounding boxes with low confidence using non-maxima suppression.
 	void PostProcess(FrameData& frame, const std::vector<cv::Mat>& out);
 	//! Loads classes names from file.
 	void PrepareNet();
@@ -139,14 +141,18 @@ private:
 	ConfigFiles cfg_;
 	//! Classes names.
 	std::vector<std::string> classes_;
+	//! Classes to display.
+	std::vector<std::string> classesToDisplay_;
 	//! Function to call for internal handle of processed frame.
 	FrameProcessedCallback frameProcessedCallback_;
-	//! SIze od data frame;
+	//! SIze od data frame.
 	cv::Size frameSize_;
 	//! True if processing in progress.
 	std::atomic_bool isRunning_;
-	//! Neural network;
+	//! Neural network.
 	cv::dnn::Net net_;
+	//! True if algorithm parameters was loaded.
+	std::atomic_bool netConfigured_;
 	//! Result of processing.
 	std::vector<FrameData> processingRes_;
 	//! Algorithm settings.

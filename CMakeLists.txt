@@ -15,3 +15,4 @@ endif()
 
 add_subdirectory(modules/recognitionlib)
 add_subdirectory(modules/sandbox)
+add_subdirectory(modules/app)

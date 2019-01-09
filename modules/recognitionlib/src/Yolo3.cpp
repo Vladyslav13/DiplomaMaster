@@ -9,6 +9,7 @@ namespace yolo
 YOLO3::YOLO3()
 	: frameProcessedCallback_([](auto) {})
 	, isRunning_(false)
+	, netConfigured_(false)
 {
 	
 }
@@ -17,6 +18,7 @@ YOLO3::YOLO3(const ConfigFiles& configFiles, const Settings& settings)
 	: cfg_(configFiles)
 	, frameProcessedCallback_([](auto) {})
 	, isRunning_(false)
+	, netConfigured_(false)
 	, settings_(settings)
 {
 }
@@ -24,6 +26,33 @@ YOLO3::YOLO3(const ConfigFiles& configFiles, const Settings& settings)
 void YOLO3::DrawPred(
 	int classId, float conf, int left, int top, int right, int bottom, FrameData& frame)
 {
+	//Get the label for the class name and its confidence
+	std::string label = cv::format("%.2f", conf);
+	if (!classes_.empty())
+	{
+		if (classId >= classes_.size()) {
+			return;
+		}
+
+		const auto className = classes_[classId];
+
+		auto it = std::find_if(
+			classesToDisplay_.begin(),
+			classesToDisplay_.end(),
+			[&className](const std::string& name) {
+				return className == name;
+			});
+		if(it == classesToDisplay_.end()) {
+			return;
+		}
+
+		label = className + ":" + label;
+	}
+	else
+	{
+		return;
+	}
+
 	//Draw a rectangle displaying the bounding box
 	rectangle(
 		*frame,
@@ -31,14 +60,6 @@ void YOLO3::DrawPred(
 		cv::Point(right, bottom),
 		cv::Scalar(255, 178, 50),
 		3);
-
-	//Get the label for the class name and its confidence
-	std::string label = cv::format("%.2f", conf);
-	if (!classes_.empty())
-	{
-		CV_Assert(classId < static_cast<int>(classes_.size()));
-		label = classes_[classId] + ":" + label;
-	}
 
 	//Display the label at the top of the bounding box
 	int baseLine;
@@ -138,7 +159,12 @@ void YOLO3::PostProcess(FrameData& frame, const std::vector<cv::Mat>& outs)
 
 void YOLO3::PrepareNet()
 {
-	// TODO: Move to function.
+	processingRes_.clear();
+
+	if (netConfigured_) {
+		return;
+	}
+
 	std::ifstream ifs(cfg_.classesNamesFile_);
 	std::string line;
 	classes_.clear();
@@ -152,7 +178,7 @@ void YOLO3::PrepareNet()
 	net_.setPreferableBackend(settings_.preferableBackend_);
 	net_.setPreferableTarget(settings_.preferableTarget_);
 
-	processingRes_.clear();
+	netConfigured_ = true;
 }
 
 std::string YOLO3::Process(
@@ -287,11 +313,18 @@ bool YOLO3::SetFrameProcessedCallback(const FrameProcessedCallback& callback)
 void YOLO3::SetConfigs(const ConfigFiles& cfg)
 {
 	cfg_ = cfg;
+	netConfigured_ = false;
+}
+
+void YOLO3::SetClassesToDisplay(const std::vector<std::string>& classes)
+{
+	classesToDisplay_ = classes;
 }
 
 void YOLO3::SetSettings(const Settings& settings)
 {
 	settings_ = settings;
+	netConfigured_ = false;
 }
 
 YOLO3::ConfigFiles YOLO3::GetConfigs() const

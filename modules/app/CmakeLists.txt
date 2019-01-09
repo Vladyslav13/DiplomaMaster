@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(Sandbox)
+project(App)
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -14,6 +14,9 @@ find_package(Qt5 COMPONENTS Widgets REQUIRED)
 set(SOURCE_FILES
 	src/main.cpp
 	src/MainWindow.cpp
+	)
+
+set(INCLUDE_FILES
 	include/MainWindow.h
 	)
 
@@ -24,6 +27,7 @@ set(PCH
 
 add_executable(${PROJECT_NAME}
 	${PCH}
+	${INCLUDE_FILES}
 	${SOURCE_FILES}
 	)
 
