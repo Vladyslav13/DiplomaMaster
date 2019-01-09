@@ -6,12 +6,433 @@ namespace rclib
 namespace rcnn
 {
 
+MaskRcnn::MaskRcnn()
+	: frameProcessedCallback_([](auto) {})
+	, isRunning_(false)
+	, netConfigured_(false)
+{
+}
 
-const char* keys =
-"{help h usage ? | | Usage examples: \n\t\t./mask-rcnn.out --image=traffic.jpg \n\t\t./mask-rcnn.out --video=sample.mp4}"
-"{image i        |<none>| input image   }"
-"{video v       |<none>| input video   }"
-;
+MaskRcnn::MaskRcnn(const ConfigFiles& configFiles, const Settings& settings)
+	: cfg_(configFiles)
+	, frameProcessedCallback_([](auto) {})
+	, isRunning_(false)
+	, netConfigured_(false)
+	, settings_(settings)
+{
+}
+
+void MaskRcnn::DrawBox(FrameData& frame, int classId, float conf, cv::Rect box, FrameData& objectMask)
+{
+	//Get the label for the class name and its confidence
+	std::string label = cv::format("%.2f", conf);
+	if (!classes_.empty())
+	{
+		if (classId >= classes_.size()) {
+			return;
+		}
+
+		const auto className = classes_[classId];
+
+		if (!classesToDisplay_.empty())
+		{
+			auto it = std::find_if(
+				classesToDisplay_.begin(),
+				classesToDisplay_.end(),
+				[&className](const std::string& name) {
+				return className == name;
+			});
+			if (it == classesToDisplay_.end()) {
+				return;
+			}
+		}
+
+		label = className + ":" + label;
+	}
+
+	if (settings_.drawRectangle_)
+	{
+		//Draw a rectangle displaying the bounding box
+		cv::rectangle(
+			*frame,
+			cv::Point(box.x, box.y),
+			cv::Point(box.x + box.width, box.y + box.height),
+			cv::Scalar(255, 178, 50),
+			3);
+
+		//Display the label at the top of the bounding box
+		int baseLine;
+		const cv::Size labelSize =
+			cv::getTextSize(
+				label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
+
+		box.y = std::max(box.y, labelSize.height);
+		cv::rectangle(
+			*frame,
+			cv::Point(box.x, box.y - round(1.5*labelSize.height)),
+			cv::Point(box.x + round(1.5*labelSize.width),
+				box.y + baseLine),
+			cv::Scalar(255, 255, 255), cv::FILLED);
+
+		cv::putText(*frame,
+			label, cv::Point(box.x, box.y),
+			cv::FONT_HERSHEY_SIMPLEX,
+			0.75,
+			cv::Scalar(0, 0, 0),
+			1);
+	}
+
+	if (objectMask)
+	{
+		cv::Scalar color = colors_[classId % colors_.size()];
+
+		// Resize the mask, threshold, color and apply it on the image
+		cv::resize(*objectMask, *objectMask, cv::Size(box.width, box.height));
+		cv::Mat mask = (*objectMask > settings_.maskThreshold_);
+		cv::Mat coloredRoi = (0.3 * color + 0.7 * (*frame)(box));
+		coloredRoi.convertTo(coloredRoi, CV_8UC3);
+
+		// Draw the contours on the image
+		std::vector<cv::Mat> contours;
+		cv::Mat hierarchy;
+		mask.convertTo(mask, CV_8U);
+
+		findContours(
+			mask, contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+
+		drawContours(
+			coloredRoi,
+			contours,
+			-1,
+			color,
+			5,
+			cv::LINE_8,
+			hierarchy,
+			100);
+
+		coloredRoi.copyTo((*frame)(box), mask);
+	}
+}
+
+void MaskRcnn::InitDefaultConfiguration()
+{
+	const std::string assetsPath = std::string{ ASSETS_DIR } +"/rcnn";
+
+	ConfigFiles cfg;
+	cfg.classesNamesFile_ = assetsPath + "/mscoco_labels.names";
+	cfg.textGraph_ = assetsPath + "/mask_rcnn_inception_v2_coco_2018_01_28.pbtxt";
+	cfg.modelWeights_ = assetsPath + "/mask_rcnn_inception_v2_coco_2018_01_28/frozen_inference_graph.pb";
+	cfg.colorsFile_ = assetsPath + "/colors.txt";
+
+	SetConfigs(cfg);
+
+	PrepareNet();
+}
+
+std::vector<std::string> MaskRcnn::GetOutputsNames(const cv::dnn::Net& net)
+{
+	static std::vector<std::string> names;
+	if (names.empty())
+	{
+		//Get the indices of the output layers, i.e. the layers with unconnected outputs
+		std::vector<int> outLayers = net.getUnconnectedOutLayers();
+
+		//get the names of all the layers in the network
+		std::vector<std::string> layersNames = net.getLayerNames();
+
+		// Get the names of the output layers in names
+		names.resize(outLayers.size());
+		for (size_t i = 0; i < outLayers.size(); ++i)
+			names[i] = layersNames[outLayers[i] - 1];
+	}
+	return names;
+}
+
+void MaskRcnn::PostProcess(FrameData& frame, const std::vector<cv::Mat>& outs)
+{
+	cv::Mat outDetections = outs[0];
+	cv::Mat outMasks = outs[1];
+
+	// Output size of masks is NxCxHxW where
+	// N - number of detected boxes
+	// C - number of classes (excluding background)
+	// HxW - segmentation shape
+	const int numDetections = outDetections.size[2];
+	const int numClasses = outMasks.size[1];
+
+	outDetections = outDetections.reshape(1, outDetections.total() / 7);
+	for (int i = 0; i < numDetections; ++i)
+	{
+		float score = outDetections.at<float>(i, 2);
+		if (score > settings_.confThreshold_)
+		{
+			// Extract the bounding box
+			int classId = static_cast<int>(outDetections.at<float>(i, 1));
+			int left = static_cast<int>(frame->cols * outDetections.at<float>(i, 3));
+			int top = static_cast<int>(frame->rows * outDetections.at<float>(i, 4));
+			int right = static_cast<int>(frame->cols * outDetections.at<float>(i, 5));
+			int bottom = static_cast<int>(frame->rows * outDetections.at<float>(i, 6));
+
+			left = std::max(0, std::min(left, frame->cols - 1));
+			top = std::max(0, std::min(top, frame->rows - 1));
+			right = std::max(0, std::min(right, frame->cols - 1));
+			bottom = std::max(0, std::min(bottom, frame->rows - 1));
+			cv::Rect box = cv::Rect(left, top, right - left + 1, bottom - top + 1);
+
+			// Extract the mask for the object
+			FrameData objectMask;
+			if (settings_.drawMask_)
+			{
+				objectMask =
+					std::make_shared<cv::Mat>(outMasks.size[2], outMasks.size[3], CV_32F, outMasks.ptr<float>(i, classId));
+			}
+
+			// Draw bounding box, colorize and show the mask on the image
+			DrawBox(frame, classId, score, box, objectMask);
+		}
+	}
+}
+
+void MaskRcnn::PrepareNet()
+{
+	processingRes_.clear();
+
+	if (netConfigured_) {
+		return;
+	}
+
+	std::ifstream ifs(cfg_.classesNamesFile_);
+	std::string line;
+	classes_.clear();
+	while (getline(ifs, line)) {
+		classes_.push_back(line);
+	}
+
+	std::ifstream colorFptr(cfg_.colorsFile_);
+	while (getline(colorFptr, line)) {
+		char* pEnd;
+		double r, g, b;
+		r = strtod (line.c_str(), &pEnd);
+		g = strtod (pEnd, NULL);
+		b = strtod (pEnd, NULL);
+		cv::Scalar color = cv::Scalar(r, g, b, 255.0);
+		colors_.push_back(cv::Scalar(r, g, b, 255.0));
+	}
+
+	// Load the network
+	net_ =
+		cv::dnn::readNetFromTensorflow(cfg_.modelWeights_, cfg_.textGraph_);
+	net_.setPreferableBackend(settings_.preferableBackend_);
+	net_.setPreferableTarget(settings_.preferableTarget_);
+
+	netConfigured_ = true;
+}
+
+std::string MaskRcnn::Process(
+	const DataType processingDataType,
+	const std::string& fileToProcess,
+	const int deviceInd /*= 0*/)
+{
+	// TODO: It can be false but processing loop will be in the last iteration.
+	if (isRunning_) {
+		return "Can't start new processing, the previous one is in progress";
+	}
+
+	// TODO: add mutex synchronization while accessing this parameter?
+	isRunning_ = true;
+	std::string error;
+
+	try
+	{
+		switch (processingDataType)
+		{
+		case DataType::CaptureFromVideoCam:
+			ProcessStream(deviceInd, fileToProcess); // TODO: add possibility to chose cam.
+			break;
+		case DataType::VideoProcessing:
+			ProcessVideo(fileToProcess);
+			break;
+		case DataType::Unknown:
+		default:
+			throw std::runtime_error{ "Unknown data type" };
+		}
+	}
+	catch (const std::exception& e)
+	{
+		error = "Error occured in MaskRcnn work: ";
+		error += e.what();
+	}
+
+	Stop();
+
+	return error;
+}
+
+void MaskRcnn::ProcessStream(
+	const int deviceInd, const std::string& fileToProcess)
+{
+	PrepareNet();
+
+	cv::VideoCapture cap;
+	cap.open(deviceInd);
+
+	// Add normal logging.
+	std::cout << "Start processing the object" << std::endl;
+
+	ProcessVideoImpl(cap);
+
+	cap.release();
+}
+
+void MaskRcnn::ProcessVideo(const std::string& fileToProcess)
+{
+	PrepareNet();
+
+	cv::VideoCapture cap;
+	cap.open(fileToProcess);
+
+	// Add normal logging.
+	std::cout << "Start processing the object" << std::endl;
+
+	ProcessVideoImpl(cap);
+
+	cap.release();
+}
+
+void MaskRcnn::ProcessVideoImpl(cv::VideoCapture& cap)
+{
+	frameSize_ = cv::Size(cap.get(cv::CAP_PROP_FRAME_WIDTH), cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+
+	while (cv::waitKey(1) < 0 && isRunning_)
+	{
+		auto frame = std::make_shared<cv::Mat>();
+		auto blob = std::make_shared<cv::Mat>();
+
+		// Get frame from the video
+		cap >> *frame;
+
+		// Stop the program if reached end of video
+		if (frame->empty()) {
+			break;
+		}
+
+		// Create a 4D blob from a frame.
+		cv::dnn::blobFromImage(
+			*frame,
+			*blob,
+			1.0,
+			cv::Size(frame->cols, frame->rows),
+			cv::Scalar(),
+			true,
+			false);
+
+		//Sets the input to the network
+		net_.setInput(*blob);
+
+		// Runs the forward pass to get output from the output layers
+		std::vector<std::string> outNames(2);
+		outNames[0] = "detection_out_final";
+		outNames[1] = "detection_masks";
+		std::vector<cv::Mat> outs;
+		net_.forward(outs, outNames);
+
+		// Extract the bounding box and mask for each of the detected objects
+		PostProcess(frame, outs);
+
+		//// Write the frame with the detection boxes
+		//cv::Mat detectedFrame;
+		//frame.convertTo(detectedFrame, CV_8U);
+		//if (currentWorkType == WorkType::Image) imwrite(outputFile, detectedFrame);
+		//else video.write(detectedFrame);
+
+		// Write the frame with the detection boxes
+		processingRes_.push_back(frame);
+
+		frameProcessedCallback_(frame);
+	}
+}
+
+bool MaskRcnn::IsRunning() const
+{
+	return isRunning_;
+}
+
+bool MaskRcnn::SetFrameProcessedCallback(const FrameProcessedCallback& callback)
+{
+	if (!callback) {
+		return false;
+	}
+
+	frameProcessedCallback_ = callback;
+	return true;
+}
+
+void MaskRcnn::SetConfigs(const ConfigFiles& cfg)
+{
+	cfg_ = cfg;
+	netConfigured_ = false;
+}
+
+void MaskRcnn::SetSettings(const Settings& settings)
+{
+	settings_ = settings;
+	netConfigured_ = false;
+}
+
+MaskRcnn::ConfigFiles MaskRcnn::GetConfigs() const
+{
+	return cfg_;
+}
+
+cv::Size MaskRcnn::GetFrameSize() const
+{
+	return frameSize_;
+}
+
+MaskRcnn::Settings MaskRcnn::GetSettings() const
+{
+	return settings_;
+}
+
+std::vector<MaskRcnn::FrameData> MaskRcnn::GetProcessedData() const
+{
+	if (isRunning_) {
+		return {};
+	}
+
+	return processingRes_;
+}
+
+void MaskRcnn::Stop()
+{
+	isRunning_ = false;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 using namespace cv;
 using namespace dnn;
 using namespace std;
@@ -222,7 +643,7 @@ void postprocess(Mat& frame, const vector<Mat>& outs)
 void drawBox(Mat& frame, int classId, float conf, Rect box, Mat& objectMask)
 {
 	//Draw a rectangle displaying the bounding box
-	rectangle(frame, Point(box.x, box.y), Point(box.x+box.width, box.y+box.height), Scalar(255, 178, 50), 3);
+	cv::rectangle(frame, Point(box.x, box.y), Point(box.x+box.width, box.y+box.height), Scalar(255, 178, 50), 3);
 
 	//Get the label for the class name and its confidence
 	string label = format("%.2f", conf);

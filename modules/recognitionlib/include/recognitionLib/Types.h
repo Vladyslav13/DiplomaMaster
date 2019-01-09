@@ -9,6 +9,7 @@ class NeroAlgorithm;
 enum class NeroAlgoTypes
 {
 	Unknown = 0,
+	MaskRcnn,
 	Yolo
 };
 

@@ -19,7 +19,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 	auto groupBox = new QGroupBox(tr("Current algorithm"));
 	auto yoloRatio = new QRadioButton(tr("YOLO"));
+	auto rcnnRatio = new QRadioButton(tr("RCNN"));
 	auto algoSelectLay = new QVBoxLayout;
+	algoSelectLay->addWidget(rcnnRatio);
 	algoSelectLay->addWidget(yoloRatio);
 	groupBox->setLayout(algoSelectLay);
 
@@ -41,6 +43,14 @@ MainWindow::MainWindow(QWidget *parent)
 		[this](bool checked) {
 			UpdateCurrentAlgo(rclib::NeroAlgoTypes::Yolo);
 		});
+
+	connect(
+		rcnnRatio,
+		&QRadioButton::toggled,
+		this,
+		[this](bool checked) {
+		UpdateCurrentAlgo(rclib::NeroAlgoTypes::MaskRcnn);
+	});
 
 	connect(this, &MainWindow::UpdateVideoFrame, this, &MainWindow::OnUpdateVideoFrame);
 
@@ -132,7 +142,7 @@ void MainWindow::UpdateCurrentAlgo(const rclib::NeroAlgoTypes type)
 		currentAlgorithm_->SetFrameProcessedCallback([this](auto frame) {
 			emit UpdateVideoFrame(frame);
 		});
-		currentAlgorithm_->SetClassesToDisplay({ "cell phone" });
+		//currentAlgorithm_->SetClassesToDisplay({ "cell phone" });
 	}
 	catch (const std::exception& e)
 	{
