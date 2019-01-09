@@ -38,10 +38,6 @@ public:
 		bool drawRectangle_ = true;
 		//! True if detected object will be draw with mask.
 		bool drawMask_ = false;
-		//! Width of network's input image (320, 416, 620).
-		int inpWidth_ = 320;
-		//! Height of network's input image (320, 416, 620).
-		int inpHeight_ = 320;
 		//! Confidence threshold.
 		float confThreshold_ = 0.5f;
 		//! Suppression threshold.
