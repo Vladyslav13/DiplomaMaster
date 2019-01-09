@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "MainWindow.h"
+#include <recognitionLib/Types.h>
 
 
 void TestAlgo();
@@ -37,7 +38,6 @@ void TestAlgo()
 	const std::string outputDataDir = "C:/Mine/Diploma/Programs/MainProj/processingResults";
 	const std::string inputFileName = "/images/bird.jpg";
 
-	const auto typeOfProcessing = rclib::ProcessingType::CaptureFromVideoCam;
 	const auto inputData = yoloFilesRoot + "/video/run.mp4";
 	const auto outputData = outputDataDir + inputFileName + ".avi";
 

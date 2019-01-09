@@ -49,15 +49,6 @@ public:
 	};
 
 	//
-	// Public type aliases.
-	//
-public:
-	//! Data type.
-	using FrameData = std::shared_ptr<cv::Mat>;
-	//! Type of call back function to call after frame was processed.
-	using FrameProcessedCallback = std::function<void(FrameData)>;
-
-	//
 	// Construction and destruction.
 	//
 public:
@@ -95,17 +86,15 @@ private:
 	//
 public:
 	//! Returns busy status.
-	bool IsRunning() const;
+	bool IsRunning() const override;
 	//! Set configs.
 	void SetConfigs(const ConfigFiles& cfg);
-	//! Sets classes that  allowed to display.
-	void SetClassesToDisplay(const std::vector<std::string>& classes);
 	//! Sets handle function for processing frames. Returns true in success.
-	bool SetFrameProcessedCallback(const FrameProcessedCallback& callback);
+	bool SetFrameProcessedCallback(const FrameProcessedCallback& callback) override;
 	//! Set settings.
 	void SetSettings(const Settings& settings);
 	//! Set is running status on false. Work will be stopped on the next iteration.
-	void Stop();
+	void Stop() override;
 	//! Get configs.
 	ConfigFiles GetConfigs() const;
 	//! Returns data frame size.
@@ -138,8 +127,6 @@ private:
 	ConfigFiles cfg_;
 	//! Classes names.
 	std::vector<std::string> classes_;
-	//! Classes to display.
-	std::vector<std::string> classesToDisplay_;
 	//! Function to call for internal handle of processed frame.
 	FrameProcessedCallback frameProcessedCallback_;
 	//! SIze od data frame.

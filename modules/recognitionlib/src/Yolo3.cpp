@@ -330,11 +330,6 @@ void YOLO3::SetConfigs(const ConfigFiles& cfg)
 	netConfigured_ = false;
 }
 
-void YOLO3::SetClassesToDisplay(const std::vector<std::string>& classes)
-{
-	classesToDisplay_ = classes;
-}
-
 void YOLO3::SetSettings(const Settings& settings)
 {
 	settings_ = settings;

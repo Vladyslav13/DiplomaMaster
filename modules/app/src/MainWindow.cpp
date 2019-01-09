@@ -1,11 +1,18 @@
 #include "pch.h"
 #include "MainWindow.h"
 
+#include <QGroupBox>
+#include <QRadioButton>
+#include "recognitionLib/AlgorithCreator.h"
+#include <QMessageBox>
+
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent)
 	, centralWidget_(new QFrame(this))
+	, currentAlgorithm_(nullptr)
 	, graphicsView_(new QGraphicsView(centralWidget_))
 	, startBtn_(new QPushButton("start", centralWidget_))
+	, workingThread_(nullptr)
 {
 	setCentralWidget(centralWidget_);
 
@@ -13,7 +20,14 @@ MainWindow::MainWindow(QWidget *parent)
 	graphicsView_->scene()->addItem(&pixmap_);
 	graphicsView_->setBackgroundBrush(QBrush(Qt::black));
 
+	auto groupBox = new QGroupBox(tr("Current algorithm"));
+	auto yoloRatio = new QRadioButton(tr("YOLO"));
+	auto algoSelectLay = new QVBoxLayout;
+	algoSelectLay->addWidget(yoloRatio);
+	groupBox->setLayout(algoSelectLay);
+
 	auto controlsLay = new QVBoxLayout();
+	controlsLay->addWidget(groupBox, 0, Qt::AlignTop);
 	controlsLay->addWidget(startBtn_, 0, Qt::AlignTop);
 
 	auto mainLay = new QHBoxLayout(centralWidget_);
@@ -23,6 +37,14 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(startBtn_, &QPushButton::pressed, this, &MainWindow::OnStartButtonPressed);
 	
 	qRegisterMetaType<std::shared_ptr<cv::Mat>>();
+	connect(
+		yoloRatio,
+		&QRadioButton::toggled,
+		this,
+		[this](bool checked) {
+			UpdateCurrentAlgo(rclib::NeroAlgoTypes::Yolo);
+		});
+
 	connect(this, &MainWindow::UpdateVideoFrame, this, &MainWindow::OnUpdateVideoFrame);
 
 	resize(900, 500);
@@ -32,7 +54,7 @@ MainWindow::~MainWindow()
 {
 	try
 	{
-		StopAlgorith();
+		StopAlgorithm();
 	}
 	catch (const std::exception& e)
 	{
@@ -45,11 +67,21 @@ void MainWindow::OnStartButtonPressed()
 {
 	if (workingThread_)
 	{
-		StopAlgorith();
+		StopAlgorithm();
 
 		workingThread_.reset();
 
 		startBtn_->setText("Start");
+
+		return;
+	}
+
+	if (!currentAlgorithm_)
+	{
+		QMessageBox messageBox;
+		messageBox.critical(0,"Error","Chose algorithm first");
+		messageBox.setFixedSize(500,200);
+		messageBox.show();
 
 		return;
 	}
@@ -59,12 +91,8 @@ void MainWindow::OnStartButtonPressed()
 		const std::string yoloFilesRoot = ASSETS_DIR;
 		const auto inputData = yoloFilesRoot + "/video/run.mp4";
 
-		yolo3_.InitDefaultConfiguration();
-		yolo3_.SetFrameProcessedCallback([this](auto frame) {
-			emit UpdateVideoFrame(frame);
-		});
-		yolo3_.SetClassesToDisplay({ "cell phone" });
-		yolo3_.Process(rclib::yolo::YOLO3::DataType::CaptureFromVideoCam, inputData);
+		currentAlgorithm_->Process(
+			rclib::yolo::YOLO3::DataType::CaptureFromVideoCam, inputData);
 	});
 
 	startBtn_->setText("Stop");
@@ -87,13 +115,35 @@ void MainWindow::OnUpdateVideoFrame(std::shared_ptr<cv::Mat> frame)
 	qApp->processEvents();
 }
 
-void MainWindow::StopAlgorith()
+void MainWindow::StopAlgorithm()
 {
-	if (yolo3_.IsRunning()) {
-		yolo3_.Stop();
+	if (currentAlgorithm_ && currentAlgorithm_->IsRunning()) {
+		currentAlgorithm_->Stop();
 	}
-	if (workingThread_->joinable()) {
+
+	if (workingThread_ && workingThread_->joinable()) {
 		workingThread_->join();
 	}
 }
 
+void MainWindow::UpdateCurrentAlgo(const rclib::NeroAlgoTypes type)
+{
+	try
+	{
+		StopAlgorithm();
+
+		currentAlgorithm_ = rclib::CreateNeroAlgorithm(type);
+
+		// TODO: Configure parameters later.
+		currentAlgorithm_->InitDefaultConfiguration();
+		currentAlgorithm_->SetFrameProcessedCallback([this](auto frame) {
+			emit UpdateVideoFrame(frame);
+		});
+		currentAlgorithm_->SetClassesToDisplay({ "cell phone" });
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Error occurred while updating algorithm: "
+			<< e.what();
+	}
+}

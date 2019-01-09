@@ -16,6 +16,7 @@ set(PCH
 	)
 
 set(INCLUDE_FILES
+	include/recognitionLib/AlgorithCreator.h
 	include/recognitionLib/Goturn.h
 	include/recognitionLib/NeroAlgorithm.h
 	include/recognitionLib/Rcnn.h
@@ -26,6 +27,7 @@ set(INCLUDE_FILES
 	)
 
 set(SOURCE_FILES
+	src/AlgorithCreator.cpp
 	src/Goturn.cpp
 	src/Rcnn.cpp
 	src/SelectiveSearch.cpp

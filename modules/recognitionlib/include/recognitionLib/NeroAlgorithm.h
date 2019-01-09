@@ -27,6 +27,15 @@ public:
 	};
 
 	//
+	// Public type aliases.
+	//
+public:
+	//! Data type.
+	using FrameData = std::shared_ptr<cv::Mat>;
+	//! Type of call back function to call after frame was processed.
+	using FrameProcessedCallback = std::function<void(FrameData)>;
+
+	//
 	// Public interface.
 	//
 public:
@@ -37,13 +46,31 @@ public:
 		const DataType processingDataType,
 		const std::string& fileToProcess,
 		const int deviceInd = 0) = 0;
+
+	//
+	// Setters and getters.
+	//
+public:
+	//! Returns busy status.
+	virtual bool IsRunning() const = 0;
+	//! Sets classes that  allowed to display.
+	virtual void SetClassesToDisplay(const std::vector<std::string>& classes);
+	//! Sets handle function for processing frames. Returns true in success.
+	virtual bool SetFrameProcessedCallback(const FrameProcessedCallback& callback) = 0;
+	//! Set is running status on false. Work will be stopped on the next iteration.
+	virtual void Stop() = 0;
+
+	//
+	// Protected data members.
+	//
+protected:
+	//! Classes to display.
+	std::vector<std::string> classesToDisplay_;
 };
 
-//! Supported algorithm types.
-enum class NeroAlgoTypes
+inline void NeroAlgorithm::SetClassesToDisplay(const std::vector<std::string>& classes)
 {
-	Unknown = 0,
-	Yolo
-};
+	classesToDisplay_ = classes;
+}
 
 } // namespace rclib

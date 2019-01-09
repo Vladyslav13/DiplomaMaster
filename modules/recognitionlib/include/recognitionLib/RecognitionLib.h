@@ -27,4 +27,5 @@
 #include <recognitionLib/Goturn.h>
 #include <recognitionLib/Rcnn.h>
 #include <recognitionLib/SelectiveSearch.h>
+#include <recognitionLib/Types.h>
 #include <recognitionLib/Yolo3.h>

@@ -3,13 +3,16 @@
 namespace rclib
 {
 
-enum class ProcessingType
+class NeroAlgorithm;
+
+//! Supported algorithm types.
+enum class NeroAlgoTypes
 {
 	Unknown = 0,
-	ImageProcessing,
-	VideoProcessing,
-	CaptureFromVideoCam // Currently unsupported
+	Yolo
 };
 
+//! Type of shared pointer on NeroAlgorithm.
+using NeroAlgoPtr = std::shared_ptr<NeroAlgorithm>;
 
 } // namespace rclib

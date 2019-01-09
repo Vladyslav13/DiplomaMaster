@@ -9,25 +9,40 @@ class MainWindow : public QMainWindow
 	Q_OBJECT
 
 public:
+	//!
 	explicit MainWindow(QWidget *parent = 0);
+	//!
 	~MainWindow();
 
 public:
 	//! Stops algorithm.
-	void StopAlgorith();
+	void StopAlgorithm();
 
 public slots:
+	//!
 	void OnStartButtonPressed();
+	//!
 	void OnUpdateVideoFrame(std::shared_ptr<cv::Mat> frame);
 
 signals:
+	//!
 	void UpdateVideoFrame(std::shared_ptr<cv::Mat>);
 
+	//!
 private:
+	void UpdateCurrentAlgo(const rclib::NeroAlgoTypes type);
+
+private:
+	//!
 	QFrame* centralWidget_;
+	//!
+	rclib::NeroAlgoPtr currentAlgorithm_;
+	//!
 	QGraphicsView* graphicsView_;
+	//!
 	QGraphicsPixmapItem pixmap_;
+	//!
 	QPushButton* startBtn_;
-	rclib::yolo::YOLO3 yolo3_;
+	//!
 	std::shared_ptr<std::thread> workingThread_ = nullptr;
 };
