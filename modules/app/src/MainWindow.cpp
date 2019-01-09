@@ -1,10 +1,7 @@
 #include "pch.h"
 #include "MainWindow.h"
 
-#include <QGroupBox>
-#include <QRadioButton>
-#include "recognitionLib/AlgorithCreator.h"
-#include <QMessageBox>
+#include <Utils.h>
 
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent)
@@ -78,11 +75,7 @@ void MainWindow::OnStartButtonPressed()
 
 	if (!currentAlgorithm_)
 	{
-		QMessageBox messageBox;
-		messageBox.critical(0,"Error","Chose algorithm first");
-		messageBox.setFixedSize(500,200);
-		messageBox.show();
-
+		DisplayError("Chose algorithm first", this);
 		return;
 	}
 
@@ -143,7 +136,9 @@ void MainWindow::UpdateCurrentAlgo(const rclib::NeroAlgoTypes type)
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << "Error occurred while updating algorithm: "
-			<< e.what();
+		const std::string errorMsg =
+			std::string{ "Error occurred while updating algorithm: " } +e.what();
+		std::cerr << errorMsg;
+		DisplayError(errorMsg.c_str(), this);
 	}
 }

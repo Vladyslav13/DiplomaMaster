@@ -11,13 +11,15 @@ find_package(OpenCV 4.0.1 REQUIRED)
 
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
+set(INCLUDE_FILES
+	include/MainWindow.h
+	include/Utils.h
+	)
+
 set(SOURCE_FILES
 	src/main.cpp
 	src/MainWindow.cpp
-	)
-
-set(INCLUDE_FILES
-	include/MainWindow.h
+	src/Utils.cpp
 	)
 
 set(PCH

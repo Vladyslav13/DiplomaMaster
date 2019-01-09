@@ -30,3 +30,6 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QApplication>
+#include <QGroupBox>
+#include <QRadioButton>
+#include <QMessageBox>

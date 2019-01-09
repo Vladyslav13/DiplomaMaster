@@ -24,6 +24,7 @@
 // Recognition lib includes.
 //
 
+#include "recognitionLib/AlgorithCreator.h"
 #include <recognitionLib/Goturn.h>
 #include <recognitionLib/Rcnn.h>
 #include <recognitionLib/SelectiveSearch.h>
