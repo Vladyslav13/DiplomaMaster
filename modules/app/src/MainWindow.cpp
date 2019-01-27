@@ -250,7 +250,7 @@ void MainWindow::UpdateCurrentAlgo(const rclib::NeroAlgoTypes type)
 		currentAlgorithm_->SetFrameProcessedCallback([this](auto frame) {
 			emit UpdateVideoFrame(frame);
 		});
-		//currentAlgorithm_->SetClassesToDisplay({ "cell phone" });
+		currentAlgorithm_->SetClassesToDisplay({ "person", "car", "aeroplane", "cell phone", "book" });
 	}
 	catch (const std::exception& e)
 	{

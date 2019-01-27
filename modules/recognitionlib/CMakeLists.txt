@@ -40,7 +40,7 @@ add_library(${PROJECT_NAME}
 	${SOURCE_FILES}
 	)
 
-	qt5_use_modules(${PROJECT_NAME}
+qt5_use_modules(${PROJECT_NAME}
 	Core
 	Gui
 	Widgets
